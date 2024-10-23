@@ -15,7 +15,6 @@ A robust Python script for evaluating Vision Language Model (VLM) performance on
 1. Clone the repository:
 ```bash
 git clone git@github.com:ali-hindy/agentic-docent.git
-cd art-evaluator
 ```
 
 2. Change to evaluation directory
