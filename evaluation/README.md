@@ -62,13 +62,13 @@ Your `ground_truth.json` should follow this format:
 
 Run the script directly:
 ```bash
-python art_evaluator.py
+python eval.py
 ```
 
 ### Using as a Module
 
 ```python
-from art_evaluator import ArtEvaluator
+from eval import ArtEvaluator
 
 # Initialize evaluator
 evaluator = ArtEvaluator()
@@ -140,6 +140,7 @@ To process multiple images:
 
 ```python
 from pathlib import Path
+from eval import ArtEvaluator
 
 evaluator = ArtEvaluator()
 image_dir = Path("images")
