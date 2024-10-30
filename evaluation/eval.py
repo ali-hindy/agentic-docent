@@ -6,7 +6,7 @@ import logging
 from together import Together
 from PIL import Image
 import io
-
+import re 
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
@@ -58,11 +58,14 @@ class ArtEvaluator:
             "artist": YOUR ANSWER,
             "title_of_work": YOUR ANSWER,
             "date_created": YOUR ANSWER,
-            "location": YOUR ANSWER,he
+            "location": YOUR ANSWER,
             "style": YOUR ANSWER
         }
         where style is the art style where the work came from, artist is the FULL NAME of the painter who created the work,  
-        title_of_work is the FULL title of the work, date_created is the year when the work was created, in the format: YEAR and location is where the work was created, in the format: TOWN, COUNTRY. Only output the exact json format and nothing else."""
+        title_of_work is the FULL title of the work, date_created is the year when the work was created, in the format: YEAR and location is where the work was created, in the format: TOWN, COUNTRY. Only output the exact json format and nothing else. If the information is unknown, write unknown.
+        
+        Make sure to write proper json format:
+        """
         
         try:
             # Encode image
@@ -116,7 +119,11 @@ class ArtEvaluator:
         """
         try:
             with open(ground_truth_path, 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+
+                # Convert 'date_created' to string
+                data["date_created"] = str(data["date_created"])
+                return data
         except Exception as e:
             logger.error(f"Error loading ground truth file: {str(e)}")
             raise
@@ -164,6 +171,130 @@ class ArtEvaluator:
         results['accuracy'] = correct_fields / total_fields
         
         return results
+    def _extract_json(self,response):
+      try:
+          # Regex to find the first JSON object in the text
+          json_match = re.search(r"\{.*\}", response, re.DOTALL)
+          if json_match:
+              # Load and return the JSON object
+              return json.loads(json_match.group())
+          else:
+              raise ValueError("No valid JSON found.")
+      except json.JSONDecodeError as e:
+          raise ValueError(f"Error decoding JSON: {e}")
+    def evaluate_response_llm_judge(self, vlm_response: Dict[str, Any], 
+                              ground_truth: Dict[str, Any]) -> Dict[str, Any]:
+      """
+      Use Gemma-2B to judge if VLM responses are semantically similar to ground truth
+      using a single API call for all fields.
+      
+      Args:
+          vlm_response (Dict[str, Any]): Response from VLM
+          ground_truth (Dict[str, Any]): Ground truth data
+          
+      Returns:
+          Dict[str, Any]: Evaluation results with LLM judgments
+      """
+      results = {
+          'correct_fields': {},
+          'incorrect_fields': {},
+          'missing_fields': [],
+          'field_scores': {}
+      }
+      
+      # First collect missing fields
+      for field in self.required_fields:
+          if field not in vlm_response or field not in ground_truth:
+              results['missing_fields'].append(field)
+              results['field_scores'][field] = 0
+      
+      # Prepare comparison data for available fields
+      fields_to_compare = [
+          field for field in self.required_fields 
+          if field not in results['missing_fields']
+      ]
+      
+      if not fields_to_compare:
+          results['accuracy'] = 0
+          return results
+          
+      # Create a structured prompt for all fields
+      prompt = """Compare the following pairs of values and determine if they are semantically equivalent or similar enough to be considered correct.
+
+      Consider:
+      - Names may have slight spelling variations or abbreviations
+      - Dates may be in different formats but represent the same time
+      - Locations may use historical or modern names
+      - Styles may use related terms or subcategories
+
+      For each field, output only a 1 if the values are equivalent or similar enough to be considered correct, or 0 if they are clearly different or incorrect.
+
+      Fill out the results in this exact JSON format, nothing else:
+      Fill out the proper json format, with commas following each value for score,
+      {
+          "field_scores": {
+              "artist": score,
+              "title_of_work": score,
+              "date_created": score,
+              "location": score,
+              "style": score,
+          }
+      }
+      where score is either 0 or 1.  Do not forget closing brackets } 
+      Here are the pairs to compare:
+      """
+      
+      # Add each field comparison to the prompt
+      for field in fields_to_compare:
+          prompt += f"\n{field}:\n"
+          prompt += f"VLM Response: {vlm_response[field]}\n"
+          prompt += f"Ground Truth: {ground_truth[field]}\n"
+
+      try:
+          # Get judgment from Mixtral for all fields at once
+          response = self.client.chat.completions.create(
+              model="google/gemma-2b-it",
+              messages=[
+                  {"role": "user", "content": prompt}
+              ],
+              temperature=0
+          )
+          # Parse the JSON response
+          print(self._extract_json(response.choices[0].message.content.replace("`","".strip())))
+          scores = self._extract_json(response.choices[0].message.content.replace("`","".strip()))['field_scores']
+          
+          # Process results for each field
+          for field in fields_to_compare:
+              score = int(scores.get(field, 0))
+              results['field_scores'][field] = score
+              
+              if score == 1:
+                  results['correct_fields'][field] = {
+                      'vlm': vlm_response[field],
+                      'ground_truth': ground_truth[field]
+                  }
+              else:
+                  results['incorrect_fields'][field] = {
+                      'vlm': vlm_response[field],
+                      'ground_truth': ground_truth[field]
+                  }
+                  
+      except Exception as e:
+          logger.error(f"Error getting LLM judgment: {str(e)}")
+          # In case of error, mark all fields as incorrect
+          for field in fields_to_compare:
+              results['field_scores'][field] = 0
+              results['incorrect_fields'][field] = {
+                  'vlm': vlm_response[field],
+                  'ground_truth': ground_truth[field]
+              }
+      
+      # Calculate overall accuracy
+      total_fields = len(self.required_fields)
+      correct_fields = sum(results['field_scores'].values())
+      results['accuracy'] = correct_fields / total_fields
+      
+      return results
 
 def main():
     """Main function to run the evaluation."""

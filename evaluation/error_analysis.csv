@@ -1,0 +1,53 @@
+Field,Image,VLM Response,Ground Truth
+date_created,henri-de-toulouse-lautrec_at-the-moulin-rouge-the-dance-1890.jpg,1895,1890
+date_created,gustav-klimt_university-of-vienna-ceiling-paintings-medicine-detail-showing-hygieia-1907-1.jpg,1898,1907
+date_created,piet-mondrian_avond-evening-the-red-tree-1910.jpg,1887,1910
+date_created,norman-rockwell_boy-and-girl-gazing-at-the-moon-1926.jpg,1960,1926
+date_created,robert-delaunay_rhythm-1.jpg,1913,1912
+date_created,pieter-bruegel-the-elder_hunters-in-the-snow-1565.jpg,1514,1565
+date_created,alphonse-mucha_sarah-bernhardt-1896.jpg,1900,1896
+date_created,wassily-kandinsky_composition-iv-1911.jpg,1913,1911
+date_created,piet-mondrian_the-gray-tree-1911.jpg,1889,1911
+date_created,paul-klee_senecio-1922.jpg,1934,1922
+date_created,paul-klee_to-the-parnassus-1932.jpg,1924,1932
+date_created,edouard-manet_the-luncheon-on-the-grass-1863.jpg,1867,1863
+date_created,alphonse-mucha_spring-1896.jpg,1900,1896
+date_created,paul-cezanne_still-life-with-bottle-and-apple-basket-1894.jpg,1894,1895
+date_created,alphonse-mucha_zodiac-1896.jpg,1900,1896
+date_created,m-c-escher_circle-limit-i.jpg,1960,1958
+date_created,sandro-botticelli_the-birth-of-venus-1485.jpg,1486,1485
+date_created,claude-monet_women-in-the-garden.jpg,1867,1866
+date_created,leonardo-da-vinci_mona-lisa.jpg,1503-1506,1519
+date_created,rembrandt_the-return-of-the-prodigal-son-1669.jpg,1661,1669
+date_created,paul-cezanne_mont-sainte-victoire-3.jpg,1882,1895
+date_created,alphonse-mucha_poster-for-victorien-sardou-s-gismonda-starring-sarah-bernhardt-at-the-théâtre-de-la-1894.jpg,1898,1894
+date_created,katsushika-hokusai_the-great-wave-of-kanagawa-1831.jpg,1830-1833,1831
+date_created,piet-mondrian_composition-a-1923.jpg,1921,1923
+date_created,hieronymus-bosch_the-seven-deadly-sins-and-the-four-last-things-1485.jpg,1503,1485
+date_created,henri-de-toulouse-lautrec_in-bed-the-kiss-1892.jpg,1899,1892
+date_created,jean-francois-millet_the-angelus-1859.jpg,1890,1859
+date_created,egon-schiele_seated-woman-with-bent-knee-1917.jpg,1912,1917
+date_created,octavio-ocampo_woman-and-horses.jpg,1970,None
+date_created,william-blake_the-red-dragon-and-the-woman-clothed-with-the-sun-1805.jpg,1808,1805
+date_created,edgar-degas_three-dancers-in-an-exercise-hall.jpg,1887,1880
+date_created,lucian-freud_girl-with-a-white-dog.jpg,1980,1952
+date_created,claude-monet_impression-sunrise.jpg,1882,1872
+date_created,gustave-courbet_the-desperate-man-self-portrait-1845.jpg,1840,1845
+date_created,edward-hopper_chop-suey-1929.jpg,1927,1929
+date_created,amedeo-modigliani_jeanne-hebuterne-1919.jpg,1917,1919
+date_created,alphonse-mucha_job-1896.jpg,1901,1896
+date_created,william-adolphe-bouguereau_dante-and-virgil-1850.jpg,1875,1850
+date_created,hieronymus-bosch_the-garden-of-earthly-delights-1515-7.jpg,1490-1510,1515
+location,gustav-klimt_university-of-vienna-ceiling-paintings-medicine-detail-showing-hygieia-1907-1.jpg,"Vienna, Austria",Destroyed
+location,robert-delaunay_rhythm-1.jpg,"Paris, France",MISSING
+location,alphonse-mucha_sarah-bernhardt-1896.jpg,"Paris, France",MISSING
+location,alphonse-mucha_zodiac-1896.jpg,"Paris, France",MISSING
+location,m-c-escher_circle-limit-i.jpg,"Baarn, Netherlands",MISSING
+location,katsushika-hokusai_the-great-wave-of-kanagawa-1831.jpg,"Edo, Japan",Private Collection
+location,octavio-ocampo_woman-and-horses.jpg,"Figueres, Spain",MISSING
+location,edgar-degas_three-dancers-in-an-exercise-hall.jpg,"Paris, France",MISSING
+location,m-c-escher_drawing-hands.jpg,Holland,MISSING
+location,wassily-kandinsky_yellow-red-blue-1925.jpg,"Munich, Germany",MISSING
+location,alphonse-mucha_job-1896.jpg,"Prague, Czech Republic",MISSING
+style,william-blake_the-red-dragon-and-the-woman-clothed-with-the-sun-1805.jpg,Romanticism,Symbolism
+style,wassily-kandinsky_yellow-red-blue-1925.jpg,Abstract Expressionism,MISSING
