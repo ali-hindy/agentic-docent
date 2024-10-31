@@ -6,7 +6,6 @@ import weasyprint
 from dotenv import load_dotenv
 import numpy as np
 import pickle
-from time import sleep
 
 load_dotenv()
 
@@ -83,13 +82,29 @@ def save_painting_image(uri, painting_data, output_dir):
 def save_page_as_pdf(uri, output_dir):
     base_url = "https://www.wikiart.org/en/"
     url = base_url + uri
-    try:
-        output_path = os.path.join(output_dir, uri.replace("/", "_") + ".pdf")
-        doc = weasyprint.HTML(url=url).render()
-        doc.copy(doc.pages[3:4]).write_pdf(output_path) # For these renders, the third page contains our target data
-        print(f"Saved: {output_path}")
-    except Exception as e:
-        print(f"Error saving PDF for {url}: {e}")
+    while True:
+        try:
+            output_path = os.path.join(output_dir, uri.replace("/", "_") + ".pdf")
+            # Define CSS for page size and content overflow handling
+            css = weasyprint.CSS(string="""
+                @page {
+                    size: A1; /* Set page size to A4 or any other standard size */
+                    margin: 1in; /* Adjust margins as needed */
+                }
+                body {
+                    overflow: hidden; /* Prevent content from overflowing */
+                }
+                .content-section {
+                    page-break-before: always; /* Force page breaks for specific sections if needed */
+                }
+            """)
+            doc = weasyprint.HTML(url=url).render(stylesheets=[css])
+            doc.copy(doc.pages[0:1]).write_pdf(output_path) # For these renders, the third page contains our target data
+            print(f"Saved: {output_path}")
+            break
+        except Exception as e:
+            print(f"Error saving PDF for {url}: {e}")
+            print("Retrying...")
 
 # Scrape additional data directly from page and write to JSON
 def write_data_from_page(uri, painting_data, json_dir):
