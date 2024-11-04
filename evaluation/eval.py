@@ -106,6 +106,58 @@ class ArtEvaluator:
         except Exception as e:
             logger.error(f"Error getting VLM response: {str(e)}")
             raise
+        
+    def get_vlm_response_rag(self, json_text: str) -> Dict[str, Any]:
+        """
+        Get VLM response by prompting the model with the given JSON text.
+        
+        Args:
+            json_text (str): JSON text containing the artwork metadata
+            
+        Returns:
+            Dict[str, Any]: Parsed JSON response from the VLM
+        """
+        # This is really dumb but f strings messes up the formatting of 
+        # json for some reason so we do this twice. 
+        first_half_of_prompt = f"""You are an art docent at a museum. Given the following JSON metadata, please provide the information about the artwork in the requested format:
+        {json_text}  """
+        second_half_of_prompt = """
+        {
+            "artist": YOUR ANSWER,
+            "title_of_work": YOUR ANSWER,
+            "date_created": YOUR ANSWER,
+            "location": YOUR ANSWER,
+            "style": YOUR ANSWER
+        }
+        
+        Make sure to write the exact JSON format and nothing else. If the information is unknown, write "unknown".
+        """
+        prompt = first_half_of_prompt + second_half_of_prompt
+        try:
+            # Create the message with the prompt
+            messages = [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+            
+            # Get response from VLM
+            response = self.client.chat.completions.create(
+                model="meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
+                messages=messages
+            )
+            
+            # Parse the JSON response
+            response_text = response.choices[0].message.content
+            return json.loads(response_text)
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parsing VLM response as JSON: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error getting VLM response: {str(e)}")
+            raise
 
     def load_ground_truth(self, ground_truth_path: str) -> Dict[str, Any]:
         """
