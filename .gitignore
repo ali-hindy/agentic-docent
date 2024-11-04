@@ -2,3 +2,10 @@
 scrape/data
 *.env
 *.DS_Store
+data-small/*
+*.zip
+*.pyc
+*.npy
+*.csv
+data_v2/*
+rag_system/*

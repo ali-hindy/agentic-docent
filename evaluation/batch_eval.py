@@ -183,13 +183,13 @@ def run_batch_evaluation(image_dir: str, json_dir: str, max_samples: int = 5) ->
         print(df['Field'].value_counts())
         
         # Save error analysis to CSV
-        output_path = "error_analysis.csv"
+        output_path = "error_analysis_500.csv"
         df.to_csv(output_path, index=False)
         print(f"\nDetailed error analysis saved to: {output_path}")
 
 if __name__ == "__main__":
     run_batch_evaluation(
-        image_dir="../data-small/images",
-        json_dir="../data-small/json",
-        max_samples=100
+        image_dir="../data_v2/images",
+        json_dir="../data_v2/json",
+        max_samples=500
     )
