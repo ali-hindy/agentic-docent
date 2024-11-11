@@ -48,7 +48,8 @@ class WikipediaRetriever:
         "action": "query",
         "titles": title,
         "prop": "extracts",
-        "exsentences": 10,
+        "exsentences": 10, # Extract ten sentences
+        "explaintext": True, # Plaintext instead of HTML
         "format": "json"
     }
     response = requests.get(self.base_url, params=params)
