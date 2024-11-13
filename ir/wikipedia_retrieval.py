@@ -1,19 +1,17 @@
 import requests
 import json
 
-class WikipediaRetriever:
+class WikipediaRetrieval:
   def __init__(self):
     self.base_url = "https://en.wikipedia.org/w/api.php"
 
   # Get extracted wiki content for additional context from ground json data
-  def search_from_json(self, json_path: str):
+  def search_from_json(self, json_data: dict):
     wiki_content = []
-    with open(json_path, "r") as f:
-       data = json.load(f)
     
     keys = ["title_of_work", "artist", "style"]
     for k in keys:
-       pages = self.get_pages(data[k])
+       pages = self.get_pages(json_data[k])
        if pages is not None:
           wiki_content.append(self.get_extracts(pages))
     return wiki_content
@@ -63,6 +61,6 @@ class WikipediaRetriever:
     return page_content
 
 # Usage example
-wiki_retriever = WikipediaRetriever()
-json_path = "../scrape/data/json/edvard-munch_the-scream-1893.json"
-print(wiki_retriever.search_from_json(json_path))
+# wiki_retriever = WikipediaRetrieval()
+# json_path = "../scrape/data/json/edvard-munch_the-scream-1893.json"
+# print(wiki_retriever.search_from_json(json_path))
