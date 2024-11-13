@@ -9,11 +9,12 @@ class WikipediaRetrieval:
   def search_from_json(self, json_data: dict):
     wiki_content = []
     
-    keys = ["title_of_work", "artist", "style"]
+    keys = ["artist", "style"]
     for k in keys:
        pages = self.get_pages(json_data[k])
        if pages is not None:
           wiki_content.append(self.get_extracts(pages))
+
     return wiki_content
   
   # Get Wikipedia pages given search query
@@ -39,7 +40,7 @@ class WikipediaRetrieval:
            return None
     else:
         raise Exception("Error: {response.status_code}")
-  
+
   # Get extracts from Wikipedia page given title
   def get_extracts(self, title: str):
     params = {
