@@ -9,25 +9,45 @@ import pickle
 
 load_dotenv()
 
-# Model:
-# {
-#   "artist": "Vincent Van Gogh",
-#   "title_of_work": "The Starry Night",
-#   "date_created":"1889", 
-#   "location": "Saint-Rémy-de-Provence, France",
-#   "style": "Post-Impressionism"
-# }
+def get_all_artists():
+    list_url = "https://wikiart.org/en/api/2/UpdatedArtists"
+    has_more = True
+    session_key = get_wikiart_session()
+    artist_ids = []
+    pagination_token = ""
+    count = 0
+    while (has_more):
+        try:
+            full_url = f"{list_url}?paginationToken={pagination_token}&authSessionKey={session_key}"
+            response = requests.get(full_url)
+            if response.status_code == 200:
+                count += 1
+                print(f"Fetched page #{count} of artists")
+                jsonResponse = response.json()
+                has_more = jsonResponse["hasMore"]
+                pagination_token = jsonResponse["paginationToken"]
+                print(f"PToken: {pagination_token}")
+                
+                for artist in jsonResponse["data"]:
+                    artist_ids.append(artist["id"])
+            else:
+                print(f"Response with status code {response.status_code}")
+                print(response.json())
 
-# Helper function to scrape URIs and grab images for each painting
-def scrape_paintings():
+        except Exception as e:
+            print(f"Error fetching page URLs: {e}")
+    return artist_ids
+
+# Helper function to fetch data for each of the most viewed paintings
+# Note: API only returns the first 13892 results for some reason, after 234 pages
+def get_most_viewed_paintings(painting_data={}, checkpoint_token=""):
     list_url = "https://www.wikiart.org/en/api/2/MostViewedPaintings"
-    painting_data = {}
     has_more = True
 
     session_key = get_wikiart_session()
-    pagination_token = ""
+    pagination_token = checkpoint_token
     count = 0
-    while (has_more and count < 400):
+    while (has_more):
         try:
             full_url = f"{list_url}?paginationToken={pagination_token}&authSessionKey={session_key}"
             response = requests.get(full_url)
@@ -37,6 +57,7 @@ def scrape_paintings():
                 jsonResponse = response.json()
                 has_more = jsonResponse["hasMore"]
                 pagination_token = jsonResponse["paginationToken"]
+                print(f"PToken: {pagination_token}")
                 
                 for painting in jsonResponse["data"]:
                     painting_data[os.path.join(painting["artistUrl"], painting["url"])] = {
@@ -127,6 +148,7 @@ def write_data_from_page(uri, painting_data, json_dir):
 # Sample paintings randomly with Zipfian distribution
 def sample_paintings(painting_data, n_samples):
     n = len(painting_data.keys())
+    print(f"Sampling {n_samples} out of {n} paintings.")
             
     # Generate a Zipfian distribution for ranks
     ranks = np.arange(1, n + 1)  # ranks from 1 to n
@@ -139,14 +161,26 @@ def sample_paintings(painting_data, n_samples):
 
     return sampled_items
 
-# Main scraper function
-def scrape_wikiart(output_dir):
-    # painting_data = scrape_paintings()
-    # with open('painting_data.pkl', 'wb') as f:
-    #     pickle.dump(painting_data, f)
-    with open('painting_data.pkl', 'rb') as f:
-        painting_data = pickle.load(f)
+# Helpers for updating existing pickle
+def update_most_viewed(data_path):
+    checkpoint_token = os.getenv("CHECKPOINT_TOKEN")
+    painting_data = {}
+    if os.path.exists(data_path):
+        with open(data_path, 'rb') as f:
+            painting_data = pickle.load(f)
+    painting_data = get_most_viewed_paintings(painting_data, checkpoint_token)
+    with open(data_path, 'wb') as f:
+        pickle.dump(painting_data, f)
 
+def update_artists(data_path):
+    artist_data = get_all_artists()
+    with open(data_path, 'wb') as f:
+        pickle.dump(artist_data, f)
+
+# Sample from existing pickle
+def sample_and_write(output_dir, data_path, n_samples):
+    with open(data_path, 'rb') as f:
+            painting_data = pickle.load(f)
     pdf_dir = os.path.join(output_dir, "pdfs")
     image_dir = os.path.join(output_dir, "images")
     json_dir = os.path.join(output_dir, "json")
@@ -158,7 +192,6 @@ def scrape_wikiart(output_dir):
     if not os.path.exists(json_dir):
         os.makedirs(json_dir)
 
-    n_samples = 500
     paintings = sample_paintings(painting_data, n_samples)
 
     # Scrape from each page and save PDF
@@ -170,6 +203,11 @@ def scrape_wikiart(output_dir):
 
 if __name__ == "__main__":
     output_dir = "./data"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    scrape_wikiart(output_dir)
+    data_path = 'artists.pkl'
+    update_artists(data_path)
+    #scrape_wikiart(data_path)
+    # if not os.path.exists(output_dir):
+    #     os.makedirs(output_dir)
+
+    # n_samples = 500
+    # sample_and_write(output_dir, data_path, n_samples)
