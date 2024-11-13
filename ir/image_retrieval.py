@@ -76,7 +76,7 @@ class ImageRetrieval:
         return metadata
 
 # Usage example
-image_retriever = ImageRetrieval("../data_v2/images", "../data_v2/json")
-similar_image_path, metadata = image_retriever.retrieve_most_similar_image("../data_v2/images/adam-baltatu_still-life-with-travel-props.jpg")
-print(f"Most similar image: {similar_image_path}")
-print(f"Metadata: {metadata}")
+# image_retriever = ImageRetrieval("../data_v2/images", "../data_v2/json")
+# similar_image_path, metadata = image_retriever.retrieve_most_similar_image("../data_v2/images/adam-baltatu_still-life-with-travel-props.jpg")
+# print(f"Most similar image: {similar_image_path}")
+# print(f"Metadata: {metadata}")
