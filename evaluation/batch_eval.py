@@ -146,15 +146,7 @@ def run_batch_evaluation(image_dir: str, json_dir: str, max_samples: int = 5) ->
             field_accuracies[field].append(score)
     
     # Print results
-    print("\n=== EVALUATION RESULTS ===")
-    print(f"Total Images Evaluated: {len(results)}")
-    print(f"Average Accuracy: {avg_accuracy:.2%}")
-    
-    print("\n=== PER-FIELD ACCURACY ===")
-    for field, scores in field_accuracies.items():
-        field_acc = sum(scores) / len(scores)
-        print(f"{field}: {field_acc:.2%}")
-    
+   
     print("\n=== ERROR ANALYSIS ===")
     for field, errors in error_analysis.items():
         if errors:
@@ -176,6 +168,15 @@ def run_batch_evaluation(image_dir: str, json_dir: str, max_samples: int = 5) ->
                 'Ground Truth': error['ground_truth']
             })
     
+    print("\n=== EVALUATION RESULTS ===")
+    print(f"Total Images Evaluated: {len(results)}")
+    print(f"Average Accuracy: {avg_accuracy:.2%}")
+    
+    print("\n=== PER-FIELD ACCURACY ===")
+    for field, scores in field_accuracies.items():
+        field_acc = sum(scores) / len(scores)
+        print(f"{field}: {field_acc:.2%}")
+    
     if error_summary:
         df = pd.DataFrame(error_summary)
         print("\n=== ERROR SUMMARY STATISTICS ===")
@@ -189,7 +190,7 @@ def run_batch_evaluation(image_dir: str, json_dir: str, max_samples: int = 5) ->
 
 if __name__ == "__main__":
     run_batch_evaluation(
-        image_dir="../data_v2/images",
+        image_dir="../data_v2/images_handheld",
         json_dir="../data_v2/json",
         max_samples=500
     )

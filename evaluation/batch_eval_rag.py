@@ -24,7 +24,7 @@ def run_batch_evaluation(image_dir: str, json_dir: str, max_samples: int = 5) ->
         try:
             similar_image_path, metadata = image_retriever.retrieve_most_similar_image(str(image_path))
             
-            vlm_response = evaluator.get_vlm_response_rag(metadata)
+            vlm_response = metadata#evaluator.get_vlm_response_rag(metadata)
             ground_truth = evaluator.load_ground_truth(str(json_dir / f"{image_path.stem}.json"))
             result = evaluator.evaluate_response_llm_judge(vlm_response, ground_truth)
             results[image_path.name] = result
@@ -96,9 +96,18 @@ def run_batch_evaluation(image_dir: str, json_dir: str, max_samples: int = 5) ->
         df.to_csv(output_path, index=False)
         print(f"\nDetailed error analysis saved to: {output_path}")
 
+        print("\n=== EVALUATION RESULTS ===")
+        print(f"Total Images Evaluated: {len(results)}")
+        print(f"Average Accuracy: {avg_accuracy:.2%}")
+        
+        print("\n=== PER-FIELD ACCURACY ===")
+        for field, scores in field_accuracies.items():
+            field_acc = sum(scores) / len(scores)
+            print(f"{field}: {field_acc:.2%}")
+
 if __name__ == "__main__":
     run_batch_evaluation(
-        image_dir="../data_v2/images",
+        image_dir="../data_v2/images_handheld",
         json_dir="../data_v2/json",
         max_samples=500
     )
