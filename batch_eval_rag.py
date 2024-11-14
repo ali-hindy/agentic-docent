@@ -1,4 +1,4 @@
-from ir.image_retrieval import ImageRetrieval
+from ir import ImageRetrieval
 
 from eval import ArtEvaluator
 from pathlib import Path
