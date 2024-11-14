@@ -6,6 +6,8 @@ import weasyprint
 from dotenv import load_dotenv
 import numpy as np
 import pickle
+from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 load_dotenv()
 
@@ -97,7 +99,6 @@ def save_painting_image(uri, painting_data, output_dir):
     if img.status_code == 200:
         with open(save_path, 'wb') as f:
             f.write(img.content)
-        print("Saved image: " + save_path)
 
 # Save HTML page as PDF
 def save_page_as_pdf(uri, output_dir):
@@ -143,10 +144,12 @@ def write_data_from_page(uri, painting_data, json_dir):
     save_path = os.path.join(json_dir, uri.replace("/", "_") + ".json")
     with open(save_path, 'w') as f:
         json.dump(painting_data[uri], f, indent=4)
-    print("Saved json: " + save_path)
 
 # Sample paintings randomly with Zipfian distribution
-def sample_paintings(painting_data, n_samples):
+def sample_paintings(data_path, n_samples):
+    with open(data_path, 'rb') as f:
+            painting_data = pickle.load(f)
+
     n = len(painting_data.keys())
     print(f"Sampling {n_samples} out of {n} paintings.")
             
@@ -177,37 +180,43 @@ def update_artists(data_path):
     with open(data_path, 'wb') as f:
         pickle.dump(artist_data, f)
 
-# Sample from existing pickle
-def sample_and_write(output_dir, data_path, n_samples):
-    with open(data_path, 'rb') as f:
-            painting_data = pickle.load(f)
-    pdf_dir = os.path.join(output_dir, "pdfs")
+# Write data for painting_keys from painting_data
+def write(output_dir, painting_data, painting_keys=None):
+    if painting_keys is None:
+        painting_keys = painting_data.keys()
+
+    # pdf_dir = os.path.join(output_dir, "pdfs")
     image_dir = os.path.join(output_dir, "images")
     json_dir = os.path.join(output_dir, "json")
 
-    if not os.path.exists(pdf_dir):
-        os.makedirs(pdf_dir)
+    # if not os.path.exists(pdf_dir):
+    #     os.makedirs(pdf_dir)
     if not os.path.exists(image_dir):
         os.makedirs(image_dir)
     if not os.path.exists(json_dir):
         os.makedirs(json_dir)
 
-    paintings = sample_paintings(painting_data, n_samples)
-
-    # Scrape from each page and save PDF
-    for i, uri in enumerate(paintings):
-        print(f"Processing painting {i+1}/{len(paintings)}")
+    def process_painting(uri, painting_data, image_dir, json_dir):
         save_painting_image(uri, painting_data, image_dir)
         write_data_from_page(uri, painting_data, json_dir)
-        save_page_as_pdf(uri, pdf_dir)
+
+    # Scrape from each page
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        futures = [executor.submit(process_painting, uri, painting_data, image_dir, json_dir) for uri in painting_keys]
+        for future in tqdm(as_completed(futures), total=len(painting_keys), desc="Processing paintings"):
+            try:
+                future.result()
+            except Exception as e:
+                print(f"Error in task: {e}")
 
 if __name__ == "__main__":
     output_dir = "./data"
-    data_path = 'artists.pkl'
-    update_artists(data_path)
-    #scrape_wikiart(data_path)
-    # if not os.path.exists(output_dir):
-    #     os.makedirs(output_dir)
+    data_path = 'painting_data.pkl'
 
-    # n_samples = 500
-    # sample_and_write(output_dir, data_path, n_samples)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    with open(data_path, 'rb') as f:
+        painting_data = pickle.load(f)
+    
+    write(output_dir, painting_data)
