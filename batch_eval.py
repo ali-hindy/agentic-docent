@@ -98,7 +98,6 @@ def run_batch_evaluation(image_dir: str, json_dir: str, max_samples: int = 5) ->
         - Memory usage scales with number of images processed
     """
     evaluator = ArtEvaluator()
-    docent = DocentPipeline()
     image_dir = Path(image_dir)
     json_dir = Path(json_dir)
     
@@ -115,7 +114,7 @@ def run_batch_evaluation(image_dir: str, json_dir: str, max_samples: int = 5) ->
         gt_path = json_dir / f"{image_path.stem}.json"
         if gt_path.exists():
             try:
-                vlm_response = docent.get_vlm_response(str(image_path))
+                vlm_response = evaluator.get_vlm_response_baseline(str(image_path))
                 ground_truth = evaluator.load_ground_truth(str(gt_path))
                 result = evaluator.evaluate_response_llm_judge(
                     vlm_response, ground_truth

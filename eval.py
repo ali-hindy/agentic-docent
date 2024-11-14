@@ -28,7 +28,87 @@ class ArtEvaluator:
             'location', 'style'
         ]
 
-    
+    def encode_image(self, image_path: str) -> str:
+        """
+        Encode image to base64 string.
+        
+        Args:
+        image_path (str): Path to the image file
+            
+        Returns:
+        str: Base64 encoded image string
+        """
+        try:
+            with open(image_path, 'rb') as image_file:
+                return base64.b64encode(image_file.read()).decode('utf-8')
+        except Exception as e:
+            logger.error(f"Error encoding image: {str(e)}")
+        raise
+        
+    def get_vlm_response_baseline(self, image_path: str) -> Dict[str, Any]:
+        """
+        Get VLM response for an image.
+        
+        Args:
+            image_path (str): Path to the image file
+            
+        Returns:
+            Dict[str, Any]: Parsed JSON response from the VLM
+        """
+        prompt = """You are an art docent at a museum. Given the following image, fill out the information about the image in json format:
+        {
+            "artist": YOUR ANSWER,
+            "title_of_work": YOUR ANSWER,
+            "date_created": YOUR ANSWER,
+            "location": YOUR ANSWER,
+            "style": YOUR ANSWER
+        }
+        where style is the art style where the work came from, artist is the FULL NAME of the painter who created the work,  
+        title_of_work is the FULL title of the work, date_created is the year when the work was created, in the format: YEAR and location is where the work was created, in the format: TOWN, COUNTRY. Only output the exact json format and nothing else. If the information is unknown, write unknown.
+        
+        Make sure to write proper json format:
+        """
+        
+        try:
+            # Encode image
+            image_data = self.encode_image(image_path)
+            
+            # Create the message with image
+            messages = [
+                {
+                "role": "user",
+                "content": [
+                {
+                    "type": "image_url",
+                    "image_url": {
+                    "url": f"data:image/png;base64,{image_data}"
+                    }
+                },
+                {
+                    "type": "text",
+                    "text": prompt
+                }
+                ]
+                }
+            ]
+                
+            # Get response from VLM
+            response = self.client.chat.completions.create(
+                model="meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
+                messages=messages
+            )
+                
+            # Parse the JSON response
+            response_text = response.choices[0].message.content
+            return json.loads(response_text)
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parsing VLM response as JSON: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error getting VLM response: {str(e)}")
+            raise
+        
     
     def load_ground_truth(self, ground_truth_path: str) -> Dict[str, Any]:
         """
@@ -224,7 +304,6 @@ def main():
     try:
         # Initialize evaluator
         evaluator = ArtEvaluator()
-        docent = DocentPipeline()
         # Define paths
         image_path = "input_image.png"
         ground_truth_path = "ground_truth.json"
@@ -237,7 +316,7 @@ def main():
         
         # Get VLM response
         logger.info("Getting VLM response...")
-        vlm_response = docent.get_vlm_response(image_path)
+        vlm_response = docent.get_vlm_response_baseline(image_path)
         
         # Load ground truth
         logger.info("Loading ground truth...")
