@@ -1,5 +1,5 @@
 *venv
-scrape/data
+scrape/data*
 *.env
 *.DS_Store
 data-small/*

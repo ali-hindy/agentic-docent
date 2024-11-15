@@ -1,9 +1,12 @@
-import json 
+import os
 from typing import Dict, Any, Optional
 import logging
-import base64
-
+from ir import InformationRetrieval
+from dotenv import load_dotenv
 from together import Together
+
+load_dotenv()
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
@@ -12,73 +15,40 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class DocentPipeline:
-  def __init__(self, api_key: Optional[str] = None):
+  def __init__(self, dataset_dir: str, json_dir: str, api_key: Optional[str] = None):
     """Initialize the ArtEvaluator with optional API key."""
     self.client = Together()
     if api_key:
       self.client.api_key = api_key
+    
+    self.ir = InformationRetrieval(dataset_dir, json_dir)
     
     self.required_fields = [
       'artist', 'title_of_work', 'date_created', 
       'location', 'style'
     ]
   
-  def encode_image(self, image_path: str) -> str:
+  def run(self, image_path):
+    metadata, context = self.ir.get_context(image_path)
+    return self.get_final_response(metadata, context)
+
+  def get_final_response(self, metadata: str, context: str):
+    prompt = f"""
+    You are a docent at an art museum. We have just come across this painting on a tour. Write an accessible, engaging summary for the art historical context of this work, using the following factual information:
+
+    Essential Facts:
+    <essential_facts>{metadata}</essential_facts>
+
+    Context:
+    <context>{context}</context>
+
+    Your response should only use the factual information provided. Please use all facts present in the provided Essential Facts JSON. Keep your response to 10 sentences.
     """
-    Encode image to base64 string.
-    
-    Args:
-      image_path (str): Path to the image file
-        
-    Returns:
-      str: Base64 encoded image string
-    """
-    try:
-      with open(image_path, 'rb') as image_file:
-        return base64.b64encode(image_file.read()).decode('utf-8')
-    except Exception as e:
-      logger.error(f"Error encoding image: {str(e)}")
-      raise
-        
-  def get_vlm_response(self, image_path: str) -> Dict[str, Any]:
-    """
-    Get VLM response for an image.
-    
-    Args:
-        image_path (str): Path to the image file
-        
-    Returns:
-        Dict[str, Any]: Parsed JSON response from the VLM
-    """
-    prompt = """You are an art docent at a museum. Given the following image, fill out the information about the image in json format:
-    {
-        "artist": YOUR ANSWER,
-        "title_of_work": YOUR ANSWER,
-        "date_created": YOUR ANSWER,
-        "location": YOUR ANSWER,
-        "style": YOUR ANSWER
-    }
-    where style is the art style where the work came from, artist is the FULL NAME of the painter who created the work,  
-    title_of_work is the FULL title of the work, date_created is the year when the work was created, in the format: YEAR and location is where the work was created, in the format: TOWN, COUNTRY. Only output the exact json format and nothing else. If the information is unknown, write unknown.
-    
-    Make sure to write proper json format:
-    """
-    
-    try:
-      # Encode image
-      image_data = self.encode_image(image_path)
-      
-      # Create the message with image
-      messages = [
+
+    messages = [
         {
           "role": "user",
           "content": [
-          {
-            "type": "image_url",
-            "image_url": {
-              "url": f"data:image/png;base64,{image_data}"
-              }
-          },
           {
             "type": "text",
             "text": prompt
@@ -86,21 +56,18 @@ class DocentPipeline:
         ]
         }
       ]
-        
-      # Get response from VLM
-      response = self.client.chat.completions.create(
+    
+    response = self.client.chat.completions.create(
         model="meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
         messages=messages
       )
-        
-      # Parse the JSON response
-      response_text = response.choices[0].message.content
-      return json.loads(response_text)
-        
-    except json.JSONDecodeError as e:
-      logger.error(f"Error parsing VLM response as JSON: {str(e)}")
-      raise
-    except Exception as e:
-      logger.error(f"Error getting VLM response: {str(e)}")
-      raise
-  
+    
+    return response.choices[0].message.content
+
+if __name__ == "__main__":
+  dataset_dir = "scrape/data_v3/images"
+  json_dir = "scrape/data_v3/json"
+  pipeline = DocentPipeline(dataset_dir, json_dir, os.getenv('TOGETHER_API_KEY'))
+  image_path = "scrape/data_v3/images/caravaggio_medusa-1597-1.jpg"
+  res = pipeline.run(image_path)
+  print(res)
