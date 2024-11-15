@@ -1,9 +1,12 @@
-import json 
+import os
 from typing import Dict, Any, Optional
 import logging
-import base64
-
+from ir import InformationRetrieval
+from dotenv import load_dotenv
 from together import Together
+
+load_dotenv()
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
@@ -12,17 +15,22 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class DocentPipeline:
-  def __init__(self, api_key: Optional[str] = None):
+  def __init__(self, dataset_dir: str, json_dir: str, api_key: Optional[str] = None):
     """Initialize the ArtEvaluator with optional API key."""
     self.client = Together()
     if api_key:
       self.client.api_key = api_key
+    
+    self.ir = InformationRetrieval(dataset_dir, json_dir)
     
     self.required_fields = [
       'artist', 'title_of_work', 'date_created', 
       'location', 'style'
     ]
   
+  def run(self, image_path):
+    metadata, context = self.ir.get_context(image_path)
+    return self.get_final_response(metadata, context)
 
   def get_final_response(self, metadata: str, context: str):
     prompt = f"""
@@ -55,4 +63,11 @@ class DocentPipeline:
       )
     
     return response.choices[0].message.content
-  
+
+if __name__ == "__main__":
+  dataset_dir = "scrape/data_v3/images"
+  json_dir = "scrape/data_v3/json"
+  pipeline = DocentPipeline(dataset_dir, json_dir, os.getenv('TOGETHER_API_KEY'))
+  image_path = "scrape/data_v3/images/caravaggio_medusa-1597-1.jpg"
+  res = pipeline.run(image_path)
+  print(res)

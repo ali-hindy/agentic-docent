@@ -1,5 +1,5 @@
-from image_retrieval import ImageRetrieval
-from wikipedia_retrieval import WikipediaRetrieval
+from .image_retrieval import ImageRetrieval
+from .wikipedia_retrieval import WikipediaRetrieval
 
 class InformationRetrieval:
   def __init__(self, dataset_dir: str, json_dir: str):
@@ -12,9 +12,9 @@ class InformationRetrieval:
     return metadata, wiki_context
   
 # Usage example
-dataset_dir = "../scrape/data/images"
-json_dir = "../scrape/data/json"
-image_path = "../scrape/data/images/robert-delaunay_rhythm-1.jpg"
-ir = InformationRetrieval(dataset_dir, json_dir)
-metadata, wiki_context = ir.get_context(image_path)
-print(metadata, wiki_context)
+# dataset_dir = "../scrape/data/images"
+# json_dir = "../scrape/data/json"
+# image_path = "../scrape/data/images/robert-delaunay_rhythm-1.jpg"
+# ir = InformationRetrieval(dataset_dir, json_dir)
+# metadata, wiki_context = ir.get_context(image_path)
+# print(metadata, wiki_context)
