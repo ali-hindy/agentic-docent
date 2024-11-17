@@ -316,7 +316,7 @@ def main():
         
         # Get VLM response
         logger.info("Getting VLM response...")
-        vlm_response = docent.get_vlm_response_baseline(image_path)
+        vlm_response = evaluator.get_vlm_response_baseline(image_path)
         
         # Load ground truth
         logger.info("Loading ground truth...")

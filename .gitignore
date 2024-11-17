@@ -9,4 +9,5 @@ data-small/*
 *.csv
 data_v2/*
 rag_system/*
+data_v3/*
 *.pkl
