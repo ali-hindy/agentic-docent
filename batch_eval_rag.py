@@ -107,7 +107,7 @@ def run_batch_evaluation(image_dir: str, json_dir: str, max_samples: int = 5) ->
 
 if __name__ == "__main__":
     run_batch_evaluation(
-        image_dir="../data_v2/images_handheld",
-        json_dir="../data_v2/json",
+        image_dir="../data_v3/images",
+        json_dir="../data_v3/json",
         max_samples=500
     )
