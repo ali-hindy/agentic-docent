@@ -8,5 +8,6 @@ data-small/*
 *.npy
 *.csv
 data_v2/*
+data_v3/*
 rag_system/*
 *.pkl

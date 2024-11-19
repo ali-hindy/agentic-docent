@@ -298,6 +298,130 @@ class ArtEvaluator:
       results['accuracy'] = correct_fields / total_fields
       
       return results
+    
+    def evaluate_text_response_llm_judge(self, text_response: str, 
+                                   ground_truth: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Use Gemma-2B to judge if a text paragraph contains information matching the ground truth fields
+        using a single API call for all fields.
+        
+        Args:
+            text_response (str): Text paragraph response from model
+            ground_truth (Dict[str, Any]): Ground truth data with required fields
+            
+        Returns:
+            Dict[str, Any]: Evaluation results with LLM judgments
+        """
+        results = {
+            'correct_fields': {},
+            'incorrect_fields': {},
+            'missing_fields': [],
+            'field_scores': {},
+            'extracted_values': {}  # New field to store extracted values from text
+        }
+        
+        # Check for missing ground truth fields
+        for field in self.required_fields:
+            if field not in ground_truth:
+                results['missing_fields'].append(field)
+                results['field_scores'][field] = 0
+        
+        fields_to_check = [
+            field for field in self.required_fields 
+            if field not in results['missing_fields']
+        ]
+        
+        if not fields_to_check:
+            results['accuracy'] = 0
+            return results
+            
+        # Create a structured prompt for analyzing the text
+        prompt = f"""Analyze the following text paragraph and determine if it contains information matching each required field.
+        For each field, determine:
+        1. If the information is present in the text
+        2. Extract the specific value if present
+        3. Compare it with the ground truth value
+        
+        Consider:
+        - Names may have slight spelling variations or abbreviations
+        - Dates may be in different formats but represent the same time
+        - Locations may use historical or modern names
+        - Styles may use related terms or subcategories
+
+        Text to analyze:
+        {text_response}
+
+        For each field, output in this exact JSON format, nothing else:
+        """
+        prompt += """
+        {
+            "field_results": {{
+                "field_name": {{
+                    "present": 0 or 1,
+                    "extracted_value": "extracted text or null if not found",
+                    "matches_ground_truth": 0 or 1,
+                }},
+                ...
+            }}
+        }}
+
+        Fields to check and their ground truth values:
+        """
+        
+        # Add each field and its ground truth value to the prompt
+        for field in fields_to_check:
+            prompt += f"\n{field}: {ground_truth[field]}"
+
+        try:
+            # Get judgment from Gemma for text analysis
+            response = self.client.chat.completions.create(
+                model="meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0
+            )
+            # Parse the JSON response
+            analysis = self._extract_json(response.choices[0].message.content.replace("`","".strip()))['field_results']
+            # Process results for each field
+            for field in fields_to_check:
+                field_result = analysis.get(field, {})
+                is_present = int(field_result.get('present', 0))
+                matches_truth = int(field_result.get('matches_ground_truth', 0))
+                extracted_value = field_result.get('extracted_value')
+                
+                results['field_scores'][field] = matches_truth
+                results['extracted_values'][field] = extracted_value
+                
+                if matches_truth == 1:
+                    results['correct_fields'][field] = {
+                        'extracted': extracted_value,
+                        'ground_truth': ground_truth[field]
+                    }
+                else:
+                    results['incorrect_fields'][field] = {
+                        'extracted': extracted_value,
+                        'ground_truth': ground_truth[field],
+                        'present_in_text': bool(is_present)
+                    }
+                    
+        except Exception as e:
+            logger.error(f"Error getting LLM judgment: {str(e)}")
+            # In case of error, mark all fields as incorrect
+            for field in fields_to_check:
+                results['field_scores'][field] = 0
+                results['incorrect_fields'][field] = {
+                    'extracted': None,
+                    'ground_truth': ground_truth[field],
+                    'present_in_text': False
+                }
+        
+        # Calculate overall accuracy
+        total_fields = len(self.required_fields)
+        correct_fields = sum(results['field_scores'].values())
+        results['accuracy'] = correct_fields / total_fields
+        
+        return results
 
 def main():
     """Main function to run the evaluation."""
