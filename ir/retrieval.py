@@ -7,7 +7,7 @@ class InformationRetrieval:
     self.wikipedia_retrieval = WikipediaRetrieval()
   
   def get_context(self, image_path: str):
-    _, metadata = self.image_retrieval.retrieve_most_similar_image(image_path)
+    _, metadata, _ = self.image_retrieval.retrieve_most_similar_image(image_path)
     wiki_context = self.wikipedia_retrieval.search_from_json(metadata)
     return metadata, wiki_context
   
