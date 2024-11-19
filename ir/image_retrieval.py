@@ -25,9 +25,12 @@ class ImageRetrieval:
         self.embedding_type = embedding_type
         self.device = device
         
+        # Enable top-5 averaging
+        self.top_k_averaging = True
         # Set vector database path
+        data_name = dataset_dir.split("/")[1]
         if vector_db_path is None:
-            self.vector_db_path = f"vector_database_{embedding_type.lower()}.npy"
+            self.vector_db_path = f"vector_database_{embedding_type.lower()}_{data_name}.npy"
         else:
             self.vector_db_path = vector_db_path
             
@@ -178,7 +181,59 @@ class ImageRetrieval:
             query_embedding = self.model(image.unsqueeze(0).to("cpu")).squeeze().cpu().numpy()
         distances, indices = self.neighbors.kneighbors([query_embedding])
         most_similar_image_path = os.path.join(self.dataset_dir, os.listdir(self.dataset_dir)[indices[0][0]])
-        return most_similar_image_path, self.load_image_metadata(most_similar_image_path)
+        results = []
+        for idx, dist in zip(indices[0], distances[0]):
+            similar_image_path = os.path.join(self.dataset_dir, os.listdir(self.dataset_dir)[idx])
+            metadata = self.load_image_metadata(similar_image_path)
+            similarity_score = 1 - dist  # Convert distance to similarity score
+            results.append((similar_image_path, metadata, similarity_score))
+        
+        if self.top_k_averaging and all([1-x < 0.9 for x in distances[0]]):
+            # Get top 5 results
+            top_5_results = results[:5]
+            
+            # Count occurrences of each attribute
+            artist_counts = {}
+            location_counts = {}
+            style_counts = {}
+            
+            # Collect counts for each attribute
+            for _, metadata, _ in top_5_results:
+                # Count artists
+                artist = metadata['artist']
+                artist_counts[artist] = artist_counts.get(artist, 0) + 1
+                # Count locations
+                location = metadata.get('location',"")
+                location_counts[location] = location_counts.get(location, 0) + 1
+                
+                # Count styles
+                style = metadata['style']
+                style_counts[style] = style_counts.get(style, 0) + 1
+            
+            # Get majority values (or first occurrence in case of ties)
+            majority_artist = max(artist_counts.items(), key=lambda x: x[1])[0]
+            majority_location = max(location_counts.items(), key=lambda x: x[1])[0]
+            print(style_counts.items())
+            majority_style = max(style_counts.items(), key=lambda x: x[1])[0]
+            
+            # Get top result's title and date
+            top_title = results[0][1]['title_of_work']
+            top_date = results[0][1]['date_created']
+            
+            # Create aggregated metadata
+            aggregated_metadata = {
+                'artist': majority_artist,
+                'location': majority_location,
+                'title_of_work': top_title,
+                'style': majority_style,
+                'date_created': top_date
+            }
+            
+            # Return top image path with aggregated metadata and its similarity score
+            return (results[0][0], aggregated_metadata, results[0][2])
+
+
+        return results[0]
 
     def load_image_metadata(self, image_path: str) -> Dict[str, Any]:
         filename = os.path.splitext(os.path.basename(image_path))[0]
@@ -191,35 +246,34 @@ class ImageRetrieval:
 def main():
     # Initialize with ResNet embeddings
     resnet_retriever = ImageRetrieval(
-        dataset_dir="../data_v2/images",
-        json_dir="../data_v2/json",
+        dataset_dir="./data_v3/images",
+        json_dir="./data_v3/json",
         embedding_type="ResNet"
     )
     
-    # Initialize with ColPali embeddings
-    colpali_retriever = ImageRetrieval(
-        dataset_dir="../data_v2/images",
-        json_dir="../data_v2/json",
-        embedding_type="ColPali"
-    )
+    # # Initialize with ColPali embeddings
+    # colpali_retriever = ImageRetrieval(
+    #     dataset_dir="../data_v2/images",
+    #     json_dir="../data_v2/json",
+    #     embedding_type="ColPali"
+    # )
     
     # Query image path
-    query_image = "../data_v2/images/adam-baltatu_still-life-with-travel-props.jpg"
-    
+    query_image = "./ir/fenetre-ouverte.jpg"
     # Get similar images using both methods
     print("\nResNet Results:")
-    resnet_results = resnet_retriever.retrieve_similar_images(query_image, k=3)
-    for path, metadata, score in resnet_results:
-        print(f"Image: {path}")
-        print(f"Similarity Score: {score:.3f}")
-        print(f"Metadata: {metadata}\n")
+    resnet_results = resnet_retriever.retrieve_most_similar_image(query_image)
     
-    print("\nColPali Results:")
-    colpali_results = colpali_retriever.retrieve_similar_images(query_image, k=3)
-    for path, metadata, score in colpali_results:
-        print(f"Image: {path}")
-        print(f"Similarity Score: {score:.3f}")
-        print(f"Metadata: {metadata}\n")
+    print(f"Image: {resnet_results[0]}")
+    print(f"Similarity Score: {resnet_results[2]:.3f}")
+    print(f"Metadata: {resnet_results[1]}\n")
+    
+    # print("\nColPali Results:")
+    # colpali_results = colpali_retriever.retrieve_similar_images(query_image, k=3)
+    # for path, metadata, score in colpali_results:
+    #     print(f"Image: {path}")
+    #     print(f"Similarity Score: {score:.3f}")
+    #     print(f"Metadata: {metadata}\n")
 
 if __name__ == "__main__":
     main()
