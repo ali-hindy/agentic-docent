@@ -19,15 +19,17 @@ class ImageRetrieval:
         embedding_type: Literal["ResNet", "ColPali"] = "ResNet",
         vector_db_path: Optional[str] = None,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
-        sim_threshold: float = 0.9
+        sim_threshold: float = 0.9,
+        k: int = 20
     ):
         self.dataset_dir = dataset_dir
         self.json_dir = json_dir
         self.embedding_type = embedding_type
         self.device = device
         self.sim_threshold = sim_threshold
+        self.k = k
         
-        # Enable top-5 averaging
+        # Enable top-k averaging
         self.top_k_averaging = True
         # Set vector database path
         data_name = dataset_dir.split("/")[1]
@@ -122,14 +124,13 @@ class ImageRetrieval:
         return transform(image)
 
     def build_knn_index(self):
-        neighbors = NearestNeighbors(n_neighbors=5, metric="cosine")
+        neighbors = NearestNeighbors(n_neighbors=self.k, metric="cosine")
         neighbors.fit(self.image_embeddings)
         return neighbors
 
     def retrieve_similar_images(
         self, 
-        image_path: str, 
-        k: int = 5
+        image_path: str
     ) -> list[tuple[str, Dict[str, Any], float]]:
         """
         Retrieve k most similar images and their metadata.
@@ -152,7 +153,7 @@ class ImageRetrieval:
 
         distances, indices = self.neighbors.kneighbors(
             [query_embedding] if self.embedding_type == "ResNet" else query_embedding,
-            n_neighbors=k
+            n_neighbors=self.k
         )
         
         results = []
@@ -181,7 +182,7 @@ class ImageRetrieval:
         image = self.preprocess_image(image_path)
         with torch.no_grad():
             query_embedding = self.model(image.unsqueeze(0).to("cpu")).squeeze().cpu().numpy()
-        distances, indices = self.neighbors.kneighbors([query_embedding])
+        distances, indices = self.neighbors.kneighbors([query_embedding], self.k)
         most_similar_image_path = os.path.join(self.dataset_dir, os.listdir(self.dataset_dir)[indices[0][0]])
         results = []
         for idx, dist in zip(indices[0], distances[0]):
@@ -191,26 +192,31 @@ class ImageRetrieval:
             results.append((similar_image_path, metadata, similarity_score))
         
         if self.top_k_averaging and all([1-x < 0.9 for x in distances[0]]):
-            # Get top 5 results
-            top_5_results = results[:5]
+            # Get top k results
+            top_k_results = results[:self.k]
             
             # Count occurrences of each attribute
             artist_counts = {}
             style_counts = {}
             
             # Collect counts for each attribute
-            for _, metadata, _ in top_5_results:
+            for _, metadata, _ in top_k_results:
                 # Count artists
-                artist = metadata['artist']
-                artist_counts[artist] = artist_counts.get(artist, 0) + 1
+                if 'artist' in metadata:
+                    artist = metadata['artist']
+                    artist_counts[artist] = artist_counts.get(artist, 0) + 1
                 
                 # Count styles
-                style = metadata['style']
-                style_counts[style] = style_counts.get(style, 0) + 1
+                if 'style' in metadata:
+                    style = metadata['style']
+                    style_counts[style] = style_counts.get(style, 0) + 1
             
             # Get majority values (or first occurrence in case of ties)
             majority_artist = max(artist_counts.items(), key=lambda x: x[1])[0]
             majority_style = max(style_counts.items(), key=lambda x: x[1])[0]
+
+            print(f"Similar artists: {artist_counts.keys()}")
+            print(f"Similar styles: {style_counts.keys()}")
             
             # Create aggregated metadata
             aggregated_metadata = {
