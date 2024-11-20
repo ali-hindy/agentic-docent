@@ -47,8 +47,6 @@ class DocentPipeline:
     Your response should only use the factual information provided. Please use all facts present in the provided Essential Facts JSON. Keep your response 5-8 sentences.
     """
 
-    print(prompt)
-
     messages = [
         {
           "role": "user",
