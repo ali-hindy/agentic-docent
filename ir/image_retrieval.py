@@ -20,7 +20,7 @@ class ImageRetrieval:
         vector_db_path: Optional[str] = None,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
         sim_threshold: float = 0.9,
-        k: int = 20
+        k: int = 5
     ):
         self.dataset_dir = dataset_dir
         self.json_dir = json_dir
