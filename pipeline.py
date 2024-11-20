@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Literal
 import logging
 from ir import InformationRetrieval
 from dotenv import load_dotenv
@@ -15,35 +15,39 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class DocentPipeline:
-  def __init__(self, dataset_dir: str, json_dir: str, api_key: Optional[str] = None):
+  def __init__(
+      self, 
+      dataset_dir: str, 
+      json_dir: str, 
+      api_key: Optional[str] = None,
+      embedding_type: Literal["ResNet", "ColPali"] = "ResNet"
+  ):
     """Initialize the ArtEvaluator with optional API key."""
     self.client = Together()
     if api_key:
       self.client.api_key = api_key
     
-    self.ir = InformationRetrieval(dataset_dir, json_dir)
-    
-    self.required_fields = [
-      'artist', 'title_of_work', 'date_created', 
-      'location', 'style'
-    ]
+    self.ir = InformationRetrieval(dataset_dir, json_dir, embedding_type=embedding_type)
+  
   
   def run(self, image_path):
-    metadata, context = self.ir.get_context(image_path)
-    return self.get_final_response(metadata, context)
+    metadata, context, exact_match = self.ir.get_context(image_path)
+    return self.get_final_response(metadata, context, exact_match)
 
-  def get_final_response(self, metadata: str, context: str):
+  def get_final_response(self, metadata: str, context: str, exact_match: bool):
     prompt = f"""
-    You are a docent at an art museum. We have just come across this painting on a tour. Write an accessible, engaging summary for the art historical context of this work, using the following factual information:
-
+    You are an art historian being asked about a painting. Write an accessible, engaging summary for the art historical context of this work, using the following factual information:
+    {"Begin your response by clarifying you couldn't identify the painting exactly, but that it appears similar to the following artist and style." if not exact_match else ""}
     Essential Facts:
     <essential_facts>{metadata}</essential_facts>
 
     Context:
     <context>{context}</context>
 
-    Your response should only use the factual information provided. Please use all facts present in the provided Essential Facts JSON. Keep your response to 10 sentences.
+    Your response should only use the factual information provided. Please use all facts present in the provided Essential Facts JSON. Keep your response 5-8 sentences.
     """
+
+    print(prompt)
 
     messages = [
         {
@@ -65,9 +69,13 @@ class DocentPipeline:
     return response.choices[0].message.content
 
 if __name__ == "__main__":
-  dataset_dir = "scrape/data_v3/images"
-  json_dir = "scrape/data_v3/json"
+  dataset_dir = "./data_v3/images"
+  json_dir = "./data_v3/json"
   pipeline = DocentPipeline(dataset_dir, json_dir, os.getenv('TOGETHER_API_KEY'))
-  image_path = "scrape/data_v3/images/caravaggio_medusa-1597-1.jpg"
-  res = pipeline.run(image_path)
-  print(res)
+  image_paths = [
+    #"./data_v3/images/caravaggio_medusa-1597-1.jpg",
+    "./ir/fenetre-ouverte.jpg"
+  ]
+  for path in image_paths:
+    res = pipeline.run(path)
+    print(res)

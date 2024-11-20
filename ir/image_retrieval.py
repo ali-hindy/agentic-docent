@@ -18,12 +18,14 @@ class ImageRetrieval:
         json_dir: str, 
         embedding_type: Literal["ResNet", "ColPali"] = "ResNet",
         vector_db_path: Optional[str] = None,
-        device: str = "cuda" if torch.cuda.is_available() else "cpu"
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        sim_threshold: float = 0.9
     ):
         self.dataset_dir = dataset_dir
         self.json_dir = json_dir
         self.embedding_type = embedding_type
         self.device = device
+        self.sim_threshold = sim_threshold
         
         # Enable top-5 averaging
         self.top_k_averaging = True
@@ -194,7 +196,6 @@ class ImageRetrieval:
             
             # Count occurrences of each attribute
             artist_counts = {}
-            location_counts = {}
             style_counts = {}
             
             # Collect counts for each attribute
@@ -202,9 +203,6 @@ class ImageRetrieval:
                 # Count artists
                 artist = metadata['artist']
                 artist_counts[artist] = artist_counts.get(artist, 0) + 1
-                # Count locations
-                location = metadata.get('location',"")
-                location_counts[location] = location_counts.get(location, 0) + 1
                 
                 # Count styles
                 style = metadata['style']
@@ -212,21 +210,12 @@ class ImageRetrieval:
             
             # Get majority values (or first occurrence in case of ties)
             majority_artist = max(artist_counts.items(), key=lambda x: x[1])[0]
-            majority_location = max(location_counts.items(), key=lambda x: x[1])[0]
-            print(style_counts.items())
             majority_style = max(style_counts.items(), key=lambda x: x[1])[0]
-            
-            # Get top result's title and date
-            top_title = results[0][1]['title_of_work']
-            top_date = results[0][1]['date_created']
             
             # Create aggregated metadata
             aggregated_metadata = {
                 'artist': majority_artist,
-                'location': majority_location,
-                'title_of_work': top_title,
                 'style': majority_style,
-                'date_created': top_date
             }
             
             # Return top image path with aggregated metadata and its similarity score
@@ -240,6 +229,9 @@ class ImageRetrieval:
         json_path = os.path.join(self.json_dir, f"{filename}.json")
         with open(json_path, "r") as f:
             metadata = json.load(f)
+        # Remove unused location key
+        if "location" in metadata:
+            del metadata["location"]
         return metadata
 
 # Usage example
