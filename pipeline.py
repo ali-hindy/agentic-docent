@@ -26,7 +26,7 @@ class DocentPipeline:
     if api_key:
       self.client.api_key = api_key
     
-    self.ir = InformationRetrieval(dataset_dir, json_dir, embedding_type=embedding_type)
+    self.ir = InformationRetrieval(dataset_dir, json_dir, self.client, embedding_type=embedding_type)
   
   
   def run(self, image_path):

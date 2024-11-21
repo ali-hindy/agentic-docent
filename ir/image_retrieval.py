@@ -11,12 +11,14 @@ from tqdm import tqdm
 from colpali_engine.models import ColPali
 from colpali_engine.models.paligemma.colpali.processing_colpali import ColPaliProcessor
 from colpali_engine.utils.processing_utils import BaseVisualRetrieverProcessor
+from together import Together
 
 class ImageRetrieval:
     def __init__(
         self, 
         dataset_dir: str, 
-        json_dir: str, 
+        json_dir: str,
+        together_client: Together,
         embedding_type: Literal["ResNet", "ColPali"] = "ResNet",
         vector_db_path: Optional[str] = None,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
@@ -26,6 +28,7 @@ class ImageRetrieval:
     ):
         self.dataset_dir = dataset_dir
         self.json_dir = json_dir
+        self.together_client = together_client
         self.embedding_type = embedding_type
         self.device = device
         self.sim_threshold = sim_threshold
