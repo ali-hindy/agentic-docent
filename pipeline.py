@@ -22,7 +22,6 @@ class DocentPipeline:
       api_key: Optional[str] = None,
       embedding_type: Literal["ResNet", "ColPali"] = "ResNet"
   ):
-    """Initialize the ArtEvaluator with optional API key."""
     self.client = Together()
     if api_key:
       self.client.api_key = api_key

@@ -3,6 +3,7 @@ import json
 import torch
 import numpy as np
 from PIL import Image
+from pydantic import BaseModel, Field
 from typing import Dict, Any, Tuple, Optional, Literal
 from torchvision import models, transforms
 from sklearn.neighbors import NearestNeighbors
@@ -20,7 +21,8 @@ class ImageRetrieval:
         vector_db_path: Optional[str] = None,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
         sim_threshold: float = 0.9,
-        k: int = 5
+        k: int = 5,
+        top_k_averaging: bool = False
     ):
         self.dataset_dir = dataset_dir
         self.json_dir = json_dir
@@ -28,9 +30,8 @@ class ImageRetrieval:
         self.device = device
         self.sim_threshold = sim_threshold
         self.k = k
-        
-        # Enable top-k averaging
-        self.top_k_averaging = True
+        self.top_k_averaging = top_k_averaging
+
         # Set vector database path
         data_name = dataset_dir.split("/")[1]
         if vector_db_path is None:
@@ -191,44 +192,76 @@ class ImageRetrieval:
             similarity_score = 1 - dist  # Convert distance to similarity score
             results.append((similar_image_path, metadata, similarity_score))
         
-        if self.top_k_averaging and all([1-x < 0.9 for x in distances[0]]):
-            # Get top k results
-            top_k_results = results[:self.k]
-            
-            # Count occurrences of each attribute
-            artist_counts = {}
-            style_counts = {}
-            
-            # Collect counts for each attribute
-            for _, metadata, _ in top_k_results:
-                # Count artists
-                if 'artist' in metadata:
-                    artist = metadata['artist']
-                    artist_counts[artist] = artist_counts.get(artist, 0) + 1
+        if all([1-x < self.sim_threshold for x in distances[0]]):
+            if self.top_k_averaging:
+                # Get top k results
+                top_k_results = results[:self.k]
                 
-                # Count styles
-                if 'style' in metadata:
-                    style = metadata['style']
-                    style_counts[style] = style_counts.get(style, 0) + 1
-            
-            # Get majority values (or first occurrence in case of ties)
-            majority_artist = max(artist_counts.items(), key=lambda x: x[1])[0]
-            majority_style = max(style_counts.items(), key=lambda x: x[1])[0]
+                # Count occurrences of each attribute
+                artist_counts = {}
+                style_counts = {}
+                
+                # Collect counts for each attribute
+                for _, metadata, _ in top_k_results:
+                    # Count artists
+                    if 'artist' in metadata:
+                        artist = metadata['artist']
+                        artist_counts[artist] = artist_counts.get(artist, 0) + 1
+                    
+                    # Count styles
+                    if 'style' in metadata:
+                        style = metadata['style']
+                        style_counts[style] = style_counts.get(style, 0) + 1
+                
+                # Get majority values (or first occurrence in case of ties)
+                majority_artist = max(artist_counts.items(), key=lambda x: x[1])[0]
+                majority_style = max(style_counts.items(), key=lambda x: x[1])[0]
 
-            print(f"Similar artists: {artist_counts.keys()}")
-            print(f"Similar styles: {style_counts.keys()}")
-            
-            # Create aggregated metadata
-            aggregated_metadata = {
-                'artist': majority_artist,
-                'style': majority_style,
-            }
-            
-            # Return top image path with aggregated metadata and its similarity score
-            return (results[0][0], aggregated_metadata, results[0][2])
-
+                print(f"Similar artists: {artist_counts.keys()}")
+                print(f"Similar styles: {style_counts.keys()}")
+                
+                # Create aggregated metadata
+                aggregated_metadata = {
+                    'artist': majority_artist,
+                    'style': majority_style,
+                }
+                
+                # Return top image path with aggregated metadata and its similarity score
+                return (results[0][0], aggregated_metadata, results[0][2])
+            else:
+                self.vlm_estimate(image_path)
 
         return results[0]
+
+    def vlm_estimate(self, image_path):
+        description_prompt = "Identify the artist and artistic style of this artwork."
+
+        class ArtistStyle(BaseModel):
+            artist: str = Field(description="The artist who created the artwork")
+            style: str = Field(description="The style period/movement of the artwork")
+
+        response = self.together_client.chat.completions.create(
+            model="meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": description_prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": image_path,
+                            },
+                        },
+                    ],
+                }
+            ],
+            response_format={
+                "type": "json_object",
+                "schema": ArtistStyle.model_json_schema(),
+            },
+        )
+        return response.choices[0].message.content
 
     def load_image_metadata(self, image_path: str) -> Dict[str, Any]:
         filename = os.path.splitext(os.path.basename(image_path))[0]
