@@ -2,6 +2,7 @@ import os
 import json
 import torch
 import numpy as np
+import base64
 from PIL import Image
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Tuple, Optional, Literal
@@ -196,6 +197,7 @@ class ImageRetrieval:
             results.append((similar_image_path, metadata, similarity_score))
         
         if all([1-x < self.sim_threshold for x in distances[0]]):
+            estimate = {}
             if self.top_k_averaging:
                 # Get top k results
                 top_k_results = results[:self.k]
@@ -224,25 +226,22 @@ class ImageRetrieval:
                 print(f"Similar styles: {style_counts.keys()}")
                 
                 # Create aggregated metadata
-                aggregated_metadata = {
+                estimate = {
                     'artist': majority_artist,
                     'style': majority_style,
                 }
-                
-                # Return top image path with aggregated metadata and its similarity score
-                return (results[0][0], aggregated_metadata, results[0][2])
             else:
-                self.vlm_estimate(image_path)
+                estimate = self.vlm_estimate(image_path)
+
+            # Return top image path with estimated metadata and its similarity score
+            return (results[0][0], estimate, results[0][2])
 
         return results[0]
 
     def vlm_estimate(self, image_path):
-        description_prompt = "Identify the artist and artistic style of this artwork."
-
-        class ArtistStyle(BaseModel):
-            artist: str = Field(description="The artist who created the artwork")
-            style: str = Field(description="The style period/movement of the artwork")
-
+        description_prompt = "Identify the artist and artistic style of this artwork. Respond only with valid JSON in the format {\"artist\": \"<ARTIST>\", \"style\": \"<STYLE>\"}. {"
+        with open(image_path, "rb") as f:
+            base64_image = base64.b64encode(f.read()).decode('utf-8')
         response = self.together_client.chat.completions.create(
             model="meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
             messages=[
@@ -253,19 +252,19 @@ class ImageRetrieval:
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": image_path,
+                                "url": f"data:image/jpeg;base64,{base64_image}"
                             },
                         },
                     ],
                 }
-            ],
-            response_format={
-                "type": "json_object",
-                "schema": ArtistStyle.model_json_schema(),
-            },
+            ]
         )
-        return response.choices[0].message.content
-
+        
+        try:
+            return json.loads(response.choices[0].message.content)
+        except json.JSONDecodeError as e:
+            raise Exception("Error decoding LLm response: ", e)
+        
     def load_image_metadata(self, image_path: str) -> Dict[str, Any]:
         filename = os.path.splitext(os.path.basename(image_path))[0]
         json_path = os.path.join(self.json_dir, f"{filename}.json")
