@@ -179,7 +179,7 @@ class ImageRetrieval:
         image = self.preprocess_image(image_path)
         with torch.no_grad():
             query_embedding = self.model(image.unsqueeze(0).to("cpu")).squeeze().cpu().numpy()
-        distances, indices = self.neighbors.kneighbors([query_embedding])
+        distances, indices = self.neighbors.kneighbors([query_embedding], k=5)
         most_similar_image_path = os.path.join(self.dataset_dir, os.listdir(self.dataset_dir)[indices[0][0]])
         results = []
         for idx, dist in zip(indices[0], distances[0]):
@@ -251,12 +251,12 @@ def main():
         embedding_type="ResNet"
     )
     
-    # # Initialize with ColPali embeddings
-    # colpali_retriever = ImageRetrieval(
-    #     dataset_dir="../data_v2/images",
-    #     json_dir="../data_v2/json",
-    #     embedding_type="ColPali"
-    # )
+    # Initialize with ColPali embeddings
+    colpali_retriever = ImageRetrieval(
+        dataset_dir="./data_v3/images",
+        json_dir="./data_v3/json",
+        embedding_type="ColPali"
+    )
     
     # Query image path
     query_image = "./ir/fenetre-ouverte.jpg"
@@ -268,12 +268,12 @@ def main():
     print(f"Similarity Score: {resnet_results[2]:.3f}")
     print(f"Metadata: {resnet_results[1]}\n")
     
-    # print("\nColPali Results:")
-    # colpali_results = colpali_retriever.retrieve_similar_images(query_image, k=3)
-    # for path, metadata, score in colpali_results:
-    #     print(f"Image: {path}")
-    #     print(f"Similarity Score: {score:.3f}")
-    #     print(f"Metadata: {metadata}\n")
+    print("\nColPali Results:")
+    colpali_results = colpali_retriever.retrieve_similar_images(query_image, k=3)
+    for path, metadata, score in colpali_results:
+        print(f"Image: {path}")
+        print(f"Similarity Score: {score:.3f}")
+        print(f"Metadata: {metadata}\n")
 
 if __name__ == "__main__":
     main()
