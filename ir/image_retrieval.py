@@ -220,60 +220,46 @@ class ImageRetrieval:
         results = self.retrieve_similar_images(image_path)
         
         if results[0][2] < self.sim_threshold:
-          print("\nComparing image to WikiArt corpus...")
-          image = self.preprocess_image(image_path)
-          with torch.no_grad():
-              query_embedding = self.model(image.unsqueeze(0).to("cpu")).squeeze().cpu().numpy()
-          distances, indices = self.neighbors.kneighbors([query_embedding], self.k)
-          most_similar_image_path = os.path.join(self.dataset_dir, os.listdir(self.dataset_dir)[indices[0][0]])
-          results = []
-          for idx, dist in zip(indices[0], distances[0]):
-              similar_image_path = os.path.join(self.dataset_dir, os.listdir(self.dataset_dir)[idx])
-              metadata = self.load_image_metadata(similar_image_path)
-              similarity_score = 1 - dist  # Convert distance to similarity score
-              results.append((similar_image_path, metadata, similarity_score))
+            print(f"No exact match found. Top similarity score: {results[0][2]}")
+            estimate = {}
+            if self.top_k_averaging:
+                print("\nEstimating from top k results...")
+                # Get top k results
+                top_k_results = results[:self.k]
 
-          if all([1-x < self.sim_threshold for x in distances[0]]):
-              print(f"No exact match found. Top similarity score: {results[0][2]}")
-              estimate = {}
-              if self.top_k_averaging:
-                  print("\nEstimating from top k results...")
-                  # Get top k results
-                  top_k_results = results[:self.k]
+                # Count occurrences of each attribute
+                artist_counts = {}
+                style_counts = {}
 
-                  # Count occurrences of each attribute
-                  artist_counts = {}
-                  style_counts = {}
+                for _, metadata, _ in top_k_results:
+                    if 'artist' in metadata:
+                        artist = metadata['artist']
+                        artist_counts[artist] = artist_counts.get(artist, 0) + 1
 
-                  for _, metadata, _ in top_k_results:
-                      if 'artist' in metadata:
-                          artist = metadata['artist']
-                          artist_counts[artist] = artist_counts.get(artist, 0) + 1
+                    if 'style' in metadata:
+                        style = metadata['style']
+                        style_counts[style] = style_counts.get(style, 0) + 1
 
-                      if 'style' in metadata:
-                          style = metadata['style']
-                          style_counts[style] = style_counts.get(style, 0) + 1
+                majority_artist = max(artist_counts.items(), key=lambda x: x[1])[0]
+                majority_style = max(style_counts.items(), key=lambda x: x[1])[0]
 
-                  majority_artist = max(artist_counts.items(), key=lambda x: x[1])[0]
-                  majority_style = max(style_counts.items(), key=lambda x: x[1])[0]
+                print(f"Similar artists: {artist_counts.keys()}")
+                print(f"Similar styles: {style_counts.keys()}")
 
-                  print(f"Similar artists: {artist_counts.keys()}")
-                  print(f"Similar styles: {style_counts.keys()}")
+                estimate = {
+                    'artist': majority_artist,
+                    'style': majority_style,
+                }
+            else:
+                estimate = self.vlm_estimate(image_path)
 
-                  estimate = {
-                      'artist': majority_artist,
-                      'style': majority_style,
-                  }
-              else:
-                  estimate = self.vlm_estimate(image_path)
+            # Return top image path with estimated metadata and its similarity score
+            print(f"Estimated ground truth data: \n{estimate}")
+            return (results[0][0], estimate, results[0][2])
 
-              # Return top image path with estimated metadata and its similarity score
-              print(f"Estimated ground truth data: \n{estimate}")
-              return (results[0][0], estimate, results[0][2])
-
-          print(f"Exact match found: \n{results[0][0]}")
-          print(f"Scraped ground truth data: \n{results[0][1]}")
-          return results[0]
+        print(f"Exact match found: \n{results[0][0]}")
+        print(f"Scraped ground truth data: \n{results[0][1]}")
+        return results[0]
 
     def vlm_estimate(self, image_path):
         print("\nEstimating artist/style from VLM call...")
