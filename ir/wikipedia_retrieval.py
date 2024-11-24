@@ -10,15 +10,35 @@ class WikipediaRetrieval:
     print("\nSearching Wikipedia for additional context...")
     wiki_content = []
     
-    keys = ["artist", "style"]
-    for k in keys:
-       page = self.get_page(json_data[k])
-       if page is not None:
-          wiki_content.append(self.get_extracts(page))
-          print(f"Extracted content from Wikipedia page: {page}")
+    for k in ["artist", "style", "title_of_work"]:
+      if k in json_data:
+        page = self.get_page_from_key(json_data, k)
+        if page is not None:
+            wiki_content.append(self.get_extracts(page))
+            print(f"Extracted content from Wikipedia page: {page}")
 
     return wiki_content
   
+  # Get Wikipedia pages from value queries given JSON + keys
+  def get_page_from_key(self, json_data, key):
+    query = json_data[key]
+    if key == "title_of_work":
+      # Attempt 1: Artist in page matching title
+      title = self.get_page(query)
+      extracts = None
+      if title is not None:
+        extracts = self.get_extracts(title)
+      if extracts is not None:
+        if json_data["artist"] in extracts:
+          return title
+      # Attempt 2: Page matching title + (<artist>)
+      try:
+        return self.get_page(f"{query} ({json_data['artist']})")
+      except KeyError:
+        print(f"No page found for {query}.")
+    else:
+       return self.get_page(query)
+    
   # Get Wikipedia pages given search query
   def get_page(self, query: str):
     params = {
@@ -26,7 +46,7 @@ class WikipediaRetrieval:
         "format": "json",
         "list": "search",
         "srsearch": query,
-        "srwhat": "nearmatch", # Prevents false positives
+        "srwhat": "text",
         "srlimit": 1  # Limit to the top result for the best match
     }
 
@@ -35,8 +55,9 @@ class WikipediaRetrieval:
     if response.status_code == 200:
         data = response.json()
         if data["query"]["search"]:
-            best_match_title = data["query"]["search"][0]["title"]
-            return best_match_title.replace(" ", "_")
+            best_match = data["query"]["search"][0]
+            title = best_match["title"]
+            return title.replace(" ", "_")
         else:
            print(f"No match found for '{query}'")
            return None
@@ -55,7 +76,6 @@ class WikipediaRetrieval:
     }
     response = requests.get(self.base_url, params=params)
     data = response.json()
-    
     pages = data["query"]["pages"]
     page_content = next(iter(pages.values()))["extract"]
 
@@ -63,7 +83,12 @@ class WikipediaRetrieval:
         return None  # Indicate it's a disambiguation page
     return page_content
 
-# Usage example
-# wiki_retriever = WikipediaRetrieval()
-# json_path = "../scrape/data/json/edvard-munch_the-scream-1893.json"
-# print(wiki_retriever.search_from_json(json_path))
+if __name__ == "__main__":
+  wiki_retriever = WikipediaRetrieval()
+  data = {
+    "artist": "Georgia O'Keeffe",
+    "title_of_work": "City Night",
+    "date_created": 1926,
+    "style": "Precisionism"
+  } 
+  print(wiki_retriever.search_from_json(data))

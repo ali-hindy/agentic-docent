@@ -75,7 +75,7 @@ if __name__ == "__main__":
   json_dir = "./data_v3/json"
   pipeline = DocentPipeline(dataset_dir, json_dir, os.getenv('TOGETHER_API_KEY'), sim_threshold=0.9)
   image_paths = [
-    #"./data_v3/images/caravaggio_medusa-1597-1.jpg",
+    # "./data_v3/images/caravaggio_medusa-1597-1.jpg",
     # "./withwood.jpg",
     # "./justwhite.jpg",
     "./rhythm.jpg"
