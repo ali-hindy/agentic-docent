@@ -184,6 +184,7 @@ class ImageRetrieval:
         return transform(image)
     
     def retrieve_most_similar_image(self, image_path: str):
+        print("\nComparing image to WikiArt corpus...")
         image = self.preprocess_image(image_path)
         with torch.no_grad():
             query_embedding = self.model(image.unsqueeze(0).to("cpu")).squeeze().cpu().numpy()
@@ -197,8 +198,10 @@ class ImageRetrieval:
             results.append((similar_image_path, metadata, similarity_score))
         
         if all([1-x < self.sim_threshold for x in distances[0]]):
+            print(f"No exact match found. Top similarity score: {results[0][2]}")
             estimate = {}
             if self.top_k_averaging:
+                print("\nEstimating from top k results...")
                 # Get top k results
                 top_k_results = results[:self.k]
                 
@@ -234,11 +237,15 @@ class ImageRetrieval:
                 estimate = self.vlm_estimate(image_path)
 
             # Return top image path with estimated metadata and its similarity score
+            print(f"Estimated ground truth data: \n{estimate}")
             return (results[0][0], estimate, results[0][2])
 
+        print(f"Exact match found: \n{results[0][0]}")
+        print(f"Scraped ground truth data: \n{results[0][1]}")
         return results[0]
 
     def vlm_estimate(self, image_path):
+        print("\nEstimating artist/style from VLM call...")
         description_prompt = "Identify the artist and artistic style of this artwork. Respond only with valid JSON in the format {\"artist\": \"<ARTIST>\", \"style\": \"<STYLE>\"}. {"
         with open(image_path, "rb") as f:
             base64_image = base64.b64encode(f.read()).decode('utf-8')
