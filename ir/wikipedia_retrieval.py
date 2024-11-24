@@ -7,18 +7,20 @@ class WikipediaRetrieval:
 
   # Get extracted wiki content for additional context from ground json data
   def search_from_json(self, json_data: dict):
+    print("\nSearching Wikipedia for additional context...")
     wiki_content = []
     
     keys = ["artist", "style"]
     for k in keys:
-       pages = self.get_pages(json_data[k])
-       if pages is not None:
-          wiki_content.append(self.get_extracts(pages))
+       page = self.get_page(json_data[k])
+       if page is not None:
+          wiki_content.append(self.get_extracts(page))
+          print(f"Extracted content from Wikipedia page: {page}")
 
     return wiki_content
   
   # Get Wikipedia pages given search query
-  def get_pages(self, query: str):
+  def get_page(self, query: str):
     params = {
         "action": "query",
         "format": "json",
