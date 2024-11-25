@@ -9,7 +9,7 @@ class InformationRetrieval:
       dataset_dir: str, 
       json_dir: str,
       together_client: Together,
-      embedding_type: Literal["ResNet", "ColPali"] = "ResNet",
+      embedding_type: Literal["ResNet", "CLIP"] = "ResNet",
       sim_threshold: float = 0.9
   ):
     self.sim_threshold = sim_threshold

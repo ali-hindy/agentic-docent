@@ -23,7 +23,7 @@ class DocentPipeline:
       dataset_dir: str, 
       json_dir: str, 
       api_key: Optional[str] = None,
-      embedding_type: Literal["ResNet", "ColPali"] = "ResNet",
+      embedding_type: Literal["ResNet", "CLIP"] = "ResNet",
       sim_threshold: float = 0.9
   ):
     self.client = Together()
@@ -48,7 +48,7 @@ class DocentPipeline:
     Context:
     <context>{context}</context>
 
-    Your response should only use the factual information provided. Please use all facts present in the provided Essential Facts JSON. Keep your response 5-8 sentences.
+    Your response should only use the factual information provided. Please use all facts present in the provided Essential Facts JSON. Keep your response under 100 words.
     """
 
     messages = [
@@ -73,12 +73,17 @@ class DocentPipeline:
 if __name__ == "__main__":
   dataset_dir = "./data_v3/images"
   json_dir = "./data_v3/json"
-  pipeline = DocentPipeline(dataset_dir, json_dir, os.getenv('TOGETHER_API_KEY'), sim_threshold=0.9)
+  pipeline = DocentPipeline(
+    dataset_dir, 
+    json_dir, 
+    os.getenv('TOGETHER_API_KEY'),
+    sim_threshold=0.9,
+    embedding_type="CLIP"
+  )
   image_paths = [
-    # "./data_v3/images/caravaggio_medusa-1597-1.jpg",
-    # "./withwood.jpg",
-    # "./justwhite.jpg",
-    "./rhythm.jpg"
+    # "cropped.jpg"
+    # "mucha.jpg"
+    "fenetre-ouverte.jpg"
   ]
   for path in image_paths:
     print(f"\nRunning docent pipeline for image {path}...")
