@@ -1,6 +1,7 @@
 import os
 from typing import Dict, Any, Optional, Literal
 import logging
+import base64
 from ir import InformationRetrieval
 from dotenv import load_dotenv
 from together import Together
@@ -35,20 +36,26 @@ class DocentPipeline:
   
   def run(self, image_path):
     metadata, context, exact_match = self.ir.get_context(image_path)
-    return self.get_final_response(metadata, context, exact_match)
+    return self.get_final_response(image_path, metadata, context, exact_match)
 
-  def get_final_response(self, metadata: str, context: str, exact_match: bool):
+  def get_final_response(self, image_path: str, metadata: str, context: str, exact_match: bool):
     print("\nGenerating final response...")
+
+    with open(image_path, "rb") as f:
+      base64_image = base64.b64encode(f.read()).decode('utf-8')
+
     prompt = f"""
-    You are an art historian being asked about a painting. Write an accessible, engaging summary for the art historical context of this work, using the following factual information:
-    {"Begin your response by clarifying you couldn't identify the painting exactly, but that it appears similar to the following artist and style." if not exact_match else ""}
+    You are an art historian being asked about a painting. Write an accessible, engaging summary for the art historical context and visual analysis of this work, using the following factual information:
+    {"Before anything else, begin your response by clarifying you couldn't identify the painting, but that it appears somewhat similar to the following artist and style." if not exact_match else ""}
     Essential Facts:
     <essential_facts>{metadata}</essential_facts>
 
     Context:
     <context>{context}</context>
 
-    Your response should only use the factual information provided. Please use all facts present in the provided Essential Facts JSON. Keep your response under 100 words.
+    Incorporate at least one specific phrase about the key visually significant aspects of the work.
+    For art historical context, your response should only use the factual information provided. Visual analysis does not need to be grounded in the factual information.
+    Please use all facts present in the provided Essential Facts JSON. Limit your entire response to one succint paragraph, under 100 words.
     """
 
     messages = [
@@ -58,6 +65,12 @@ class DocentPipeline:
           {
             "type": "text",
             "text": prompt
+          },
+          {
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/jpeg;base64,{base64_image}"
+            },
           }
         ]
         }
