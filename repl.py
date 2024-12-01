@@ -15,7 +15,7 @@ if __name__ == "__main__":
     embedding_type="CLIP"
   )
 
-  print(colored("\nWelcome! I'm an art docent agent.\nGive me an image of a painting and I'll tell you about its history.", "cyan"))
+  print(colored("\nWelcome! I'm an art docent agent.\nGive me an image of a painting and I'll tell you about it.", "cyan"))
 
   while True:
     path = input("Drag painting image here: ")

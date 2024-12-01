@@ -31,11 +31,12 @@ class WikipediaRetrieval:
       if extracts is not None:
         if json_data["artist"] in extracts:
           return title
+      print(f"No Wikipedia page found for {query}")
       # Attempt 2: Page matching title + (<artist>)
       try:
         return self.get_page(f"{query} ({json_data['artist']})")
       except KeyError:
-        print(f"No page found for {query}.")
+        print(f"No Wikipedia page found for {query} {json_data['artist']}).")
     else:
        return self.get_page(query)
     
@@ -59,7 +60,7 @@ class WikipediaRetrieval:
             title = best_match["title"]
             return title.replace(" ", "_")
         else:
-           print(f"No match found for '{query}'")
+           print(f"No Wikipedia page found for '{query}'")
            return None
     else:
         raise Exception("Error: {response.status_code}")
