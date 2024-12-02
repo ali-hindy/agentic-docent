@@ -1,13 +1,15 @@
-import json
 import base64
-from pathlib import Path
-from typing import Dict, Any, Optional
-import logging
-from together import Together
-from pipeline import DocentPipeline
-from PIL import Image
 import io
-import re 
+import json
+import logging
+import re
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+from PIL import Image
+from together import Together
+
+from pipeline import DocentPipeline
 
 # Set up logging
 logging.basicConfig(
@@ -24,8 +26,7 @@ class ArtEvaluator:
             self.client.api_key = api_key
         
         self.required_fields = [
-            'artist', 'title_of_work', 'date_created', 
-            'location', 'style'
+            'artist', 'title_of_work', 'date_created', 'style'
         ]
 
     def encode_image(self, image_path: str) -> str:
@@ -109,6 +110,61 @@ class ArtEvaluator:
             logger.error(f"Error getting VLM response: {str(e)}")
             raise
         
+    def get_baseline_full_response(self, image_path: str) -> str:
+        """
+        Get a complete art analysis response from the Llama baseline model in a single prompt,
+        focusing on artist, style, and title while including visual analysis.
+        
+        Args:
+            image_path (str): Path to the image file
+                
+        Returns:
+            str: A natural language response analyzing the artwork
+        """
+        prompt = """You are an art historian being asked about a painting. Write an accessible, engaging 
+        summary about this artwork in a single paragraph (under 100 words). Your response should include:
+        1. The artist's name
+        2. The title of the work
+        3. The art style or movement
+        4. A brief description of the most striking visual elements you can see
+
+        Write naturally, as if speaking to an interested museum visitor. If you're unsure about any details,
+        acknowledge this uncertainty but provide your best assessment based on the visual evidence."""
+        
+        try:
+            # Encode image
+            image_data = self.encode_image(image_path)
+            
+            # Create the message with image
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{image_data}"
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt
+                        }
+                    ]
+                }
+            ]
+                
+            # Get response from VLM
+            response = self.client.chat.completions.create(
+                model="meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
+                messages=messages
+            )
+                
+            return response.choices[0].message.content
+            
+        except Exception as e:
+            logger.error(f"Error generating baseline response: {str(e)}")
+            raise
     
     def load_ground_truth(self, ground_truth_path: str) -> Dict[str, Any]:
         """
@@ -420,6 +476,92 @@ class ArtEvaluator:
         total_fields = len(self.required_fields)
         correct_fields = sum(results['field_scores'].values())
         results['accuracy'] = correct_fields / total_fields
+        
+        return results
+    
+    def evaluate_style_response_llm_judge(self, text_response: str) -> Dict[str, Any]:
+        """
+        Use an LLM to evaluate stylistic aspects of a text response including helpfulness,
+        informativeness, and engagement level.
+        
+        Args:
+            text_response (str): Text response to evaluate
+            
+        Returns:
+            Dict[str, Any]: Evaluation results with LLM judgments for style criteria
+        """
+        results = {
+            'style_scores': {},
+            'style_feedback': {},
+            'overall_style_score': 0
+        }
+        
+        # Define style criteria to evaluate
+        style_criteria = {
+            'helpfulness': 'evaluates if the response has a helpful tone, showing willingness to assist and provide solutions',
+            'informative': 'evaluates if the response effectively communicates information in a clear and educational manner',
+            'engaging': 'evaluates if the response maintains interest through active and dynamic communication'
+        }
+        
+        prompt = f"""Analyze the following text response and evaluate its stylistic qualities.
+        For each criterion, determine if the response meets the standard (1) or not (0).
+        Provide specific evidence from the text to support your judgment.
+        
+        Text to analyze:
+        {text_response}
+        """
+        prompt += """
+        For each criterion, output in this exact JSON format, nothing else:
+        {{
+            "style_results": {{
+                "criterion_name": {{
+                    "score": 0 or 1,
+                    "evidence": "specific examples from text supporting the judgment"
+                }},
+                ...
+            }}
+        }}
+
+        Style criteria to evaluate:
+        """
+        
+        # Add each criterion and its description to the prompt
+        for criterion, description in style_criteria.items():
+            prompt += f"\n{criterion}: {description}"
+            
+        try:
+            # Get judgment from LLM for style analysis
+            response = self.client.chat.completions.create(
+                model="meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0
+            )
+            
+            # Parse the JSON response
+            analysis = self._extract_json(response.choices[0].message.content.replace("`","").strip())['style_results']
+            
+            # Process results for each criterion
+            for criterion in style_criteria:
+                criterion_result = analysis.get(criterion, {})
+                score = int(criterion_result.get('score', 0))
+                evidence = criterion_result.get('evidence', '')
+                
+                results['style_scores'][criterion] = score
+                results['style_feedback'][criterion] = evidence
+                
+            # Calculate overall style score (average of all criteria)
+            total_score = sum(results['style_scores'].values())
+            results['overall_style_score'] = total_score / len(style_criteria)
+            
+        except Exception as e:
+            logger.error(f"Error getting LLM style judgment: {str(e)}")
+            # In case of error, mark all criteria as 0
+            for criterion in style_criteria:
+                results['style_scores'][criterion] = 0
+                results['style_feedback'][criterion] = "Error during evaluation"
+            results['overall_style_score'] = 0
         
         return results
 
