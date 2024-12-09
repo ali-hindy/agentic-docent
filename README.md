@@ -41,4 +41,7 @@ python augment.py <input_folder> <output_folder>
 ```
 You can then use these images as input for the REPL.
 
-[Demo Video](demo.mov)
+## REPL Demo GIFs
+![Painting 1 Demo](painting-1.gif)
+![Painting 2 Demo](painting-2.gif)
+![Painting 3 Demo](painting-3.gif)
