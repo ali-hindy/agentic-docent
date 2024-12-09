@@ -4,7 +4,7 @@ A pipeline for generating factual, informative, and engaging analyses of visual 
 ## Installation
 1. Clone the repository:
 ```bash
-git clone [git@github.com:ali-hindy/agentic-docent.git](https://github.com/ali-hindy/agentic-docent.git)
+git clone https://github.com/ali-hindy/agentic-docent.git
 ```
 
 2. Install required dependencies (using a venv recommended):
