@@ -14,6 +14,8 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+We recommend creating a virtual environment to manage these packages. 
+
 ## Configuration
 Set up your Together API key:
 - Option 1: Set environment variable:
