@@ -9,6 +9,7 @@ git clone https://github.com/ali-hindy/agentic-docent.git
 
 2. Install required dependencies (using a venv recommended):
 ```bash
+cd agentic-docent/
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
