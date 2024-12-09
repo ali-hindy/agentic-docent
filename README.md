@@ -7,8 +7,9 @@ A pipeline for generating factual, informative, and engaging analyses of visual 
 git clone git@github.com:ali-hindy/agentic-docent.git
 ```
 
-2. Install required dependencies:
+2. Install required dependencies (using a venv recommended):
 ```bash
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
@@ -24,15 +25,17 @@ Set up your Together API key:
    ```
 ## Running Demo REPL
 Note: Augmented and raw demo images are located in `./demo_images`.
+1. To use the demo REPL without having to source your own data or generate a vector DB, first download and extract [this zip file](https://drive.google.com/file/d/1FItu-eoPZKGHwbeq1cC-MTP2ITWKGG9S/view?usp=sharing). 
+1. Place the `data` directory and `vector_database_clip_data.npy` file at the same level as this README (project root).
 1. Run repl.py script
    ```bash
    python repl.py
    ```
-2. When prompted, input the path to your desired input image. Tip: dragging an image into the terminal pastes the path automatically.
+1. When prompted, input the path to your desired input image. Tip: dragging an image into the terminal pastes the path automatically.
    ```bash
    Drag painting image here: </path/to/image.jpg>
    ```
-3. To exit the REPL, simply press return without inputting an image.
+1. To exit the REPL, simply press return without inputting an image.
 
 ## Augmented Images
 To try out the demo REPL with augmented images like those used in our testing, use the augment.py script like so:

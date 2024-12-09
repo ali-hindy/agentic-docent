@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 if __name__ == "__main__":
-    dataset_dir = "./data_v3/images"
-    json_dir = "./data_v3/json"
+    dataset_dir = "./data/images"
+    json_dir = "./data/json"
     pipeline = DocentPipeline(
         dataset_dir,
         json_dir,
